@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" Name="MinistryShift" Language="1034" Version="0.1.0" Manufacturer="MinistryShift Authors" UpgradeCode="a9f24b22-871d-4009-8b9a-7c90b6d12345">
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+
+        <MajorUpgrade DowngradeErrorMessage="Una versión más nueva de [ProductName] ya está instalada." />
+        <MediaTemplate EmbedCab="yes" />
+
+        <Feature Id="ProductFeature" Title="MinistryShift" Level="1">
+            <ComponentGroupRef Id="AppComponents" />
+            <ComponentRef Id="ApplicationShortcut" />
+        </Feature>
+
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="MinistryShift" />
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="MinistryShift"/>
+            </Directory>
+        </Directory>
+
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcut" Guid="b9f24b22-871d-4009-8b9a-7c90b6d54321">
+                <Shortcut Id="ApplicationStartMenuShortcut" 
+                          Name="MinistryShift" 
+                          Description="MinistryShift Desktop Application"
+                          Target="[INSTALLFOLDER]ministry_shift.exe"
+                          WorkingDirectory="INSTALLFOLDER"/>
+                <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\MinistryShift" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+        <UIRef Id="WixUI_InstallDir" />
+    </Product>
+</Wix>

@@ -66,13 +66,20 @@ jobs:
       - name: Build Windows Executable
         run: flutter build windows --release
 
-      - name: Package MSIX
-        run: flutter pub run msix:create
+      - name: Add WiX to PATH
+        run: echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Package MSI
+        run: |
+          heat dir build\windows\x64\runner\Release -cg AppComponents -dr INSTALLFOLDER -scom -sreg -sfrag -gg -var var.SourceDir -out AppComponents.wxs
+          candle -dSourceDir=build\windows\x64\runner\Release -arch x64 windows\Product.wxs AppComponents.wxs
+          light -ext WixUIExtension Product.wixobj AppComponents.wixobj -out build\windows\x64\runner\Release\ministry_shift.msi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/windows/x64/runner/Release/ministry_shift.msix
+            build/windows/x64/runner/Release/ministry_shift.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
