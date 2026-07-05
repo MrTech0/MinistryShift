@@ -1,0 +1,78 @@
+name: Build and Release Windows MSIX
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Run tests
+        run: flutter test
+
+  release:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build Windows Executable
+        run: flutter build windows --release
+
+      - name: Package MSIX
+        run: flutter pub run msix:create
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/windows/x64/runner/Release/ministry_shift.msix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
