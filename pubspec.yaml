@@ -77,6 +77,7 @@ msix_config:
   logo_path: windows/runner/resources/app_icon.ico
   capabilities: "internetClient"
   install_on_launch: true
+  install_certificate: false
 
 
 
