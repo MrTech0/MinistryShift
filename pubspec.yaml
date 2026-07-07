@@ -62,22 +62,11 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.20.0
   build_runner: ^2.4.9
-  msix: ^3.16.0
 
 hooks:
   user_defines:
     sqlite3:
       source: sqlite3mc
-
-msix_config:
-  display_name: MinistryShift
-  publisher_display_name: MinistryShift Authors
-  identity_name: com.ministryshift.app
-  publisher: "CN=MinistryShift, O=MinistryShift, C=ES"
-  logo_path: windows/runner/resources/app_icon.ico
-  capabilities: "internetClient"
-  install_on_launch: true
-  install_certificate: false
 
 
 

@@ -6,9 +6,16 @@
         <MajorUpgrade DowngradeErrorMessage="Una versión más nueva de [ProductName] ya está instalada." />
         <MediaTemplate EmbedCab="yes" />
 
-        <Feature Id="ProductFeature" Title="MinistryShift" Level="1">
-            <ComponentGroupRef Id="AppComponents" />
-            <ComponentRef Id="ApplicationShortcut" />
+        <Feature Id="ProductFeature" Title="MinistryShift" Level="1" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
+            <Feature Id="CoreFiles" Title="Archivos del Programa" Description="Instala todos los archivos necesarios para ejecutar la aplicación." Level="1" AllowAdvertise="no" Absent="disallow">
+                <ComponentGroupRef Id="AppComponents" />
+            </Feature>
+            <Feature Id="StartMenuShortcutFeature" Title="Acceso Directo en Menú Inicio" Description="Crea un acceso directo a la aplicación en el Menú de Inicio." Level="1" AllowAdvertise="no">
+                <ComponentRef Id="ApplicationShortcut" />
+            </Feature>
+            <Feature Id="DesktopShortcutFeature" Title="Acceso Directo en el Escritorio" Description="Crea un acceso directo a la aplicación en tu Escritorio." Level="1" AllowAdvertise="no">
+                <ComponentRef Id="ApplicationDesktopShortcut" />
+            </Feature>
         </Feature>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
@@ -18,6 +25,7 @@
             <Directory Id="ProgramMenuFolder">
                 <Directory Id="ApplicationProgramsFolder" Name="MinistryShift"/>
             </Directory>
+            <Directory Id="DesktopFolder" Name="Desktop" />
         </Directory>
 
         <DirectoryRef Id="ApplicationProgramsFolder">
@@ -32,7 +40,18 @@
             </Component>
         </DirectoryRef>
 
-        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-        <UIRef Id="WixUI_InstallDir" />
+        <DirectoryRef Id="DesktopFolder">
+            <Component Id="ApplicationDesktopShortcut" Guid="c9f24b22-871d-4009-8b9a-7c90b6d98765">
+                <Shortcut Id="ApplicationDesktopShortcutItem"
+                          Name="MinistryShift"
+                          Description="MinistryShift Desktop Application"
+                          Target="[INSTALLFOLDER]ministry_shift.exe"
+                          WorkingDirectory="INSTALLFOLDER"/>
+                <RemoveFolder Id="CleanUpDesktopShortCut" Directory="DesktopFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\MinistryShift" Name="desktop_shortcut" Type="integer" Value="1" KeyPath="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <UIRef Id="WixUI_FeatureTree" />
     </Product>
 </Wix>
