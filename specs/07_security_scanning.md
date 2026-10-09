@@ -16,9 +16,12 @@ CodeQL-supported language and remains covered by the existing Flutter tests.
 - Match the existing Flutter SDK version, 3.44.4. Resolve locked dependencies,
   generate Dart code, and run `flutter build macos --debug --config-only`
   before initializing CodeQL. This prepares Flutter's ephemeral configuration,
-  plugin Swift package, and any CocoaPods dependencies.
+  plugin Swift package, and any CocoaPods dependencies. Resolve Xcode's Swift
+  package dependencies into the same derived-data directory before tracing.
 - After initialization, build the Runner Xcode workspace for ARM64 without
-  signing or compilation caches so CodeQL observes the Swift compilation.
+  signing or compilation caches so CodeQL observes the Swift compilation. Use
+  the generic macOS destination with `ARCHS=arm64` and `ONLY_ACTIVE_ARCH=NO`;
+  an ARM64 device destination can disappear when CodeQL traces under Rosetta.
 - Do not suppress build errors or remove a failing language from the matrix.
 - Pin all workflow actions to verified full commit SHAs; use Dependabot for
   weekly updates. Disable checkout credential persistence and bound job times.
@@ -36,6 +39,7 @@ Default and advanced CodeQL uploads cannot coexist. During pre-merge
 validation, keep default setup active and set repository variable
 `CODEQL_UPLOAD_MODE` to `never`. The custom jobs still build their databases
 and run queries; they do not replace the existing production analysis.
+Each job displays a notice and summary identifying this validation-only mode.
 
 After the pull request has been reviewed and approved:
 
