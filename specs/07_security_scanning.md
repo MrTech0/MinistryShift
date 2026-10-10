@@ -68,9 +68,21 @@ After the pull request has been reviewed and approved:
 
 1. Merge the workflow changes into `main`.
 2. Switch CodeQL from default to advanced setup (set default setup state to
-   `unconfigured`).
+   `not-configured`).
 3. Delete `CODEQL_UPLOAD_MODE` so uploads default to `always`.
 4. Dispatch the CodeQL workflow on `main`; confirm successful uploaded
    analyses with nonzero rules for Actions, C/C++, and Swift.
 
 The migration remains pending until the main-branch uploads are verified.
+
+## Activation record
+
+Advanced setup was activated on 2026-10-11 after
+[PR #1](https://github.com/MrTech0/MinistryShift/pull/1) was merged. Default
+setup reports `state: not-configured`, and `CODEQL_UPLOAD_MODE` has been deleted.
+
+[Workflow run 38093369123](https://github.com/MrTech0/MinistryShift/actions/runs/38093369123)
+completed successfully for Actions, C/C++, and Swift. GitHub received all
+three analyses from `.github/workflows/codeql.yml:analyze` on
+`refs/heads/main` at commit `710bae106da28b48fa57842eeb4081cc5d887531`, with
+17, 58, and 27 rules respectively and no analysis errors or warnings.
