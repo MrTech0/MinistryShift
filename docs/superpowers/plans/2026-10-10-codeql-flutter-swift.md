@@ -16,11 +16,13 @@ advanced analysis only after review and merge.
 - [x] Add `.github/workflows/codeql.yml` with all three languages and manual Swift build.
 - [x] Restrict release workflow permissions and pin action commits.
 - [x] Add `.github/dependabot.yml` to maintain action pins.
-- [ ] Run actionlint and whitespace validation.
-- [ ] Open a draft pull request and run CodeQL with uploads temporarily disabled.
-- [ ] Confirm actual Swift extraction, the other two scans, and Flutter tests pass.
-- [ ] Obtain independent review and fix blocking findings.
-- [ ] Present the validated pull request for review and migration approval.
+- [x] Run actionlint and whitespace validation.
+- [x] Open a draft pull request and run CodeQL with uploads temporarily disabled.
+- [x] Confirm actual Swift extraction, the other two scans, and Flutter tests pass.
+- [x] Obtain independent review and fix blocking findings.
+- [x] Present the validated pull request for review and migration approval.
+- [x] After merge, disable default setup, remove the temporary upload variable,
+  and verify successful advanced uploads on `main` for all three languages.
 
 ## Verification
 
