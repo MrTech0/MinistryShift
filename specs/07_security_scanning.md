@@ -28,6 +28,29 @@ CodeQL-supported language and remains covered by the existing Flutter tests.
 - Default tokens have `contents: read`; grant `security-events: write` only
   to analysis jobs and `contents: write` only to the release job.
 
+## Action version compatibility
+
+Use the latest stable releases verified on 2026-10-10, pinned to their
+official tag commits in every workflow:
+
+| Action | Release | Compatibility |
+| --- | --- | --- |
+| `actions/checkout` | [v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) | Node 24; normal `pull_request`, `push`, scheduled, and manual events remain supported. Keep `persist-credentials: false`. The new restrictions for fork code in `pull_request_target` and `workflow_run` do not affect these workflows. |
+| `actions/setup-java` | [v6.0.1](https://github.com/actions/setup-java/releases/tag/v6.0.1) | Node 24; `distribution: zulu` and `java-version: '17'` remain supported. No deprecated inputs or removed AdoptOpenJDK distributions are used. |
+| `subosito/flutter-action` | [v2.23.0](https://github.com/subosito/flutter-action/releases/tag/v2.23.0) | Already current. Its composite setup supports Windows x64 and macOS ARM64 and the explicitly selected Flutter 3.44.4 stable SDK. |
+| `softprops/action-gh-release` | [v3.0.3](https://github.com/softprops/action-gh-release/releases/tag/v3.0.3) | Node 24; Windows asset uploads and existing tag-only publication remain supported. Use the `token` input instead of the deprecated environment fallback, and fail if the MSI asset is missing. |
+
+Node 24 actions require Actions Runner 2.327.1 or newer. The jobs use
+GitHub-hosted runners; validate checkout on each selected operating system
+and Java/Flutter setup through the Windows test job. The application SDKs
+remain Java 17 and Flutter 3.44.4 because updating an action does not require
+upgrading the SDK it installs.
+
+Release publication requires `contents: write` and continues to run only for
+`v*` tags. Pull-request validation must not publish a release. Check the
+release action's documented inputs and runtime during the upgrade; the actual
+MSI upload is exercised by the next authorized version-tag release.
+
 ## Validation and migration
 
 The failing setup job is
