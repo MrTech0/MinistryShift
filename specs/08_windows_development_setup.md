@@ -4,6 +4,7 @@
 - **Status**: Approved
 - **Approval**: User approved the written design on 2026-10-11.
 - **Approved amendment**: User requested a single provisioning script and project-derived tool versions on 2026-10-11; this replaces the original embedded version pins.
+- **Directory amendment**: User explicitly requested interactive selection of the exact extraction directory, with no assumed destination or automatic PATH-based choice.
 - **Author**: Codex
 - **Created Date**: 2026-10-11
 - **Last Updated**: 2026-10-11
@@ -60,7 +61,7 @@ At the initial project review, Flutter 3.44.4's toolchain recognized the Visual 
 - No arguments: provision prerequisites, restore project dependencies, generate code, check the Windows device, compile a debug build, and execute `flutter test`.
 - `-CheckOnly`: inspect OS, architecture, checkout, available tools, SDK identity, and native toolchain files; return a missing-requirements report without downloads, environment changes, generated files, or invoking Flutter commands that can initialize caches.
 - `-WhatIf`: display the actions that provisioning would perform, with no downloads, installations, PATH changes, Flutter commands, or project writes.
-- `-FlutterDirectory <absolute-path>`: choose the SDK directory. Default: `%USERPROFILE%\develop\flutter-<project-version>`. Require a writable path without whitespace, reject a filesystem root and an occupied directory that is not the requested SDK, and never overwrite another SDK. A version upgrade naturally selects a new default directory.
+- `-FlutterDirectory <absolute-path>`: use the exact supplied SDK directory without prompting. When omitted, ask the developer for the full extraction directory, with no default or automatic SDK choice from PATH. Empty input cancels before provisioning; an unavailable interactive host must explain that this parameter is required. WhatIf and CheckOnly also require a supplied or interactively selected directory. Validate the selected path before any provisioning. Reject whitespace, filesystem roots, junctions, and incompatible occupied directories; never overwrite another SDK. For version upgrades, let the developer select another directory.
 - `-SkipValidation`: skip the debug build and test suite. Clearly report that the setup is prepared but compilation and tests are unverified. Version, dependency restoration, generation, and Windows device checks remain mandatory during provisioning.
 
 **Preflight**
@@ -114,6 +115,7 @@ No migrations. The script must not open the application, modify a developer's da
 ### 4.2 Test Scenarios (Unit & Integration)
 - Already provisioned environment: no installer call, no SDK download, no duplicate PATH entry.
 - Project version update: changed Flutter/Dart declarations are read without code edits; conflicting workflows stop early. Validate Windows CRLF, cached metadata/revision agreement, manifest architecture/hash selection, and a copied single script with no helper.
+- Directory selection: omitted paths prompt even when another SDK is on PATH; explicit paths skip the prompt. Empty/invalid input must not fall back to an assumed path, and noninteractive execution must require FlutterDirectory without provisioning.
 - Missing native tools: only the expected exact WinGet packages and components are requested.
 - `-CheckOnly` and `-WhatIf`: zero download, installer, environment persistence, Flutter, or generation calls.
 - Conflicting SDK, occupied directory, path containing spaces, unsupported OS/architecture, incomplete toolchain, and pending reboot: actionable failure without overwriting existing tools.

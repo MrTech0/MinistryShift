@@ -260,6 +260,51 @@ $tests['WhatIf stops before installer, download, PATH, and Flutter commands'] = 
     function script:Set-FlutterPath { throw 'Unexpected PATH persistence.' }
     Assert-Equal (Invoke-WindowsDevelopmentSetup -ProjectDirectory $fixtureRoot -FlutterDirectory 'C:\tools\flutter' -WhatIf).Mode 'WhatIf'
 }
+$tests['Omitted SDK path prompts and uses exactly the selected directory'] = {
+    $script:chosenDirectory = Join-Path $fixtureRoot 'chosen-sdk'
+    $script:promptCount = 0
+    function script:Get-ProjectToolchain { New-TestSettings }
+    function script:Read-Host { $script:promptCount++; return $script:chosenDirectory }
+    function script:Find-DevelopmentCommand { return 'C:\tools\existing-sdk\bin\flutter.bat' }
+    function script:Get-FlutterReleaseManifest { throw 'Unexpected network request.' }
+    function script:Get-DevelopmentState {
+        param($ProjectDirectory, $FlutterDirectory)
+        $state = New-TestState; $state.Sdk.Directory=$FlutterDirectory; $state.Sdk.Ready=$false; return $state
+    }
+    $result = Invoke-WindowsDevelopmentSetup -ProjectDirectory $fixtureRoot -WhatIf
+    Assert-Equal $script:promptCount 1
+    Assert-Equal $result.Sdk $script:chosenDirectory
+    Assert-Equal (Test-Path -LiteralPath $script:chosenDirectory) $false
+}
+$tests['Explicit SDK path avoids the interactive prompt'] = {
+    $directory = Join-Path $fixtureRoot 'explicit-sdk'
+    function script:Get-ProjectToolchain { New-TestSettings }
+    function script:Read-Host { throw 'Unexpected interactive prompt.' }
+    function script:Get-DevelopmentState {
+        param($ProjectDirectory, $FlutterDirectory)
+        $state = New-TestState; $state.Sdk.Directory=$FlutterDirectory; return $state
+    }
+    Assert-Equal (Invoke-WindowsDevelopmentSetup -ProjectDirectory $fixtureRoot -FlutterDirectory $directory -CheckOnly).Sdk $directory
+}
+$tests['Empty or relative interactive paths cannot fall back to an assumed directory'] = {
+    function script:Get-ProjectToolchain { New-TestSettings }
+    function script:Get-DevelopmentState { New-TestState }
+    function script:Read-Host { return $script:directoryReply }
+    function script:Get-FlutterReleaseManifest { throw 'Unexpected network request.' }
+    foreach ($reply in @('', '.\flutter')) {
+        $script:directoryReply = $reply
+        Assert-Throws { Invoke-WindowsDevelopmentSetup -ProjectDirectory $fixtureRoot -WhatIf } 'cancel|absolute|directory'
+    }
+}
+$tests['Noninteractive entry point requires an explicit SDK path'] = {
+    $project = New-TestProject 'noninteractive-project'
+    $entry = Join-Path $project 'scripts/setup-windows-dev.ps1'
+    Copy-Item -LiteralPath $toolsPath -Destination $entry
+    $shell = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+    $result = Invoke-NativeProcess $shell @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$entry,'-WhatIf') -Capture
+    Assert-Equal $result.ExitCode 1
+    if ($result.Output -notmatch 'FlutterDirectory') { throw 'Noninteractive failure did not explain how to select the SDK directory.' }
+}
 $tests['Modified generated source is protected before generation'] = {
     function script:Invoke-NativeProcess { return [pscustomobject]@{ExitCode=0; Output=' M lib/data/database/app_database.g.dart'} }
     Assert-Throws { Assert-GeneratedSourcesClean 'C:\tools\git.exe' $fixtureRoot } 'generated'
@@ -438,6 +483,7 @@ $script:DevelopmentSettings = New-TestSettings
 $failed = 0
 $originalFunctions = @{}
 $originalPropertyCommand = Get-Command Get-ItemProperty
+$originalReadHostCommand = Get-Command Read-Host
 $originalSettings = $script:DevelopmentSettings.Clone()
 Get-ChildItem Function: | Where-Object { $_.Name -notmatch '^Assert-(Equal|Throws)$' } | ForEach-Object { $originalFunctions[$_.Name] = $_.ScriptBlock }
 foreach ($name in $tests.Keys) {
@@ -447,6 +493,7 @@ foreach ($name in $tests.Keys) {
         foreach ($functionName in $originalFunctions.Keys) { Set-Item -Path "Function:$functionName" -Value $originalFunctions[$functionName] }
         $script:DevelopmentSettings = $originalSettings.Clone()
         if ($originalPropertyCommand.CommandType -eq 'Cmdlet') { Remove-Item Function:Get-ItemProperty -ErrorAction SilentlyContinue }
+        if ($originalReadHostCommand.CommandType -eq 'Cmdlet') { Remove-Item Function:Read-Host -ErrorAction SilentlyContinue }
     }
 }
 if ([IO.Path]::GetFullPath($fixtureRoot).StartsWith([IO.Path]::GetFullPath($env:TEMP).TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {

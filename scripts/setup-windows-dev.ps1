@@ -10,7 +10,9 @@ The script accepts WinGet source/package agreements when installing prerequisite
 .PARAMETER CheckOnly
 Checks existing prerequisites without downloads, installation, or Flutter execution.
 .PARAMETER FlutterDirectory
-Absolute SDK location without whitespace. Existing incompatible directories are protected.
+Exact absolute SDK location without whitespace. If omitted, setup asks for the
+directory without suggesting or selecting a default. Specify it for unattended runs.
+Existing incompatible directories are protected.
 .PARAMETER SkipValidation
 Skips the debug build and flutter test; setup will report them as unverified.
 .EXAMPLE
@@ -486,16 +488,13 @@ function Invoke-WindowsDevelopmentSetup {
     )
     $script:DevelopmentSettings = Get-ProjectToolchain $ProjectDirectory
     Write-Host "Project toolchain: Flutter $($script:DevelopmentSettings.FlutterVersion) $($script:DevelopmentSettings.FlutterChannel); Dart constraint $($script:DevelopmentSettings.DartConstraint)."
-    if (-not $FlutterDirectory) {
-        $FlutterDirectory = Join-Path $env:USERPROFILE ("develop/flutter-" + $script:DevelopmentSettings.FlutterVersion)
-        $existing = Find-DevelopmentCommand 'flutter.bat'
-        if ($existing) {
-            try {
-                $existingSdk = Get-FlutterSdkState (Split-Path (Split-Path $existing -Parent) -Parent)
-                if ($existingSdk.Ready) { $FlutterDirectory = $existingSdk.Directory }
-            } catch { Write-Host 'A different Flutter SDK is on PATH; setup will use a separate SDK matching the project.' }
-        }
+    if (-not $PSBoundParameters.ContainsKey('FlutterDirectory')) {
+        try { $FlutterDirectory = Read-Host "Full target directory for Flutter $($script:DevelopmentSettings.FlutterVersion) (no default; leave empty to cancel)" }
+        catch { throw 'Interactive directory selection is unavailable. Specify the exact SDK location with -FlutterDirectory and rerun setup.' }
+        if ([string]::IsNullOrWhiteSpace($FlutterDirectory)) { throw 'No Flutter directory selected. Setup cancelled without provisioning.' }
+        $FlutterDirectory = $FlutterDirectory.Trim()
     }
+    $FlutterDirectory = Assert-SdkDestination $FlutterDirectory
     $state = Get-DevelopmentState $ProjectDirectory $FlutterDirectory
     $plan = @(Get-ProvisioningPlan $state)
     foreach ($step in $plan) { Write-Host $step }

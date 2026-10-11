@@ -22,6 +22,14 @@ Provision and validate:
 .\scripts\setup-windows-dev.ps1
 ```
 
+Setup asks for the exact directory where the Flutter SDK should be extracted. There is no suggested or automatic destination, including an SDK already on PATH. Enter the full SDK directory; its `bin` folder will be directly inside that directory. Empty input cancels before provisioning. WhatIf and CheckOnly ask the same question when the directory is omitted.
+
+For unattended runs, supply your chosen directory explicitly:
+
+```powershell
+.\scripts\setup-windows-dev.ps1 -FlutterDirectory 'D:\SDKs\flutter-project'
+```
+
 Windows PowerShell 5.1 and PowerShell 7 are supported. If Windows PowerShell's default policy blocks local scripts, the launcher can select `RemoteSigned` for this process only; it does not change the user's or machine's persistent policy and does not override organizational Group Policy:
 
 ```powershell
@@ -36,10 +44,10 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\setup-wi
 | :--- | :--- |
 | `-WhatIf` | Preview actions without downloads, installers, PATH changes, or Flutter execution. |
 | `-CheckOnly` | Inspect prerequisites without initializing Flutter caches. Exit nonzero if requirements are missing. Does not prove compilation or tests pass. |
-| `-FlutterDirectory C:\dev\flutter-project` | Select an absolute, writable SDK path without whitespace, semicolons, or junctions. Existing incompatible directories are protected. |
+| `-FlutterDirectory <absolute-path>` | Use the exact supplied SDK directory without prompting. Required for unattended runs. Paths must be writable and contain no whitespace, semicolons, or junctions. Existing incompatible directories are protected. |
 | `-SkipValidation` | Restore dependencies and generate code, but skip the debug build and application tests; report them as unverified. |
 
-The default SDK directory is `%USERPROFILE%\develop\flutter-<project-version>`, so a project upgrade selects a separate directory and preserves the old SDK. Without an explicit directory, setup can reuse an SDK on PATH when its cached version and Git revision match the project. Provisioning also checks the official release revision and runtime versions. The script preserves unrelated PATH entries and adds Flutter to the user's PATH once. If another SDK takes priority in new terminals, use the absolute launch command printed by setup or select this SDK in your editor.
+Only the directory you select is inspected for SDK reuse. An incompatible or unverifiable SDK is protected; choose another directory for a project version upgrade. Provisioning checks the official release revision and runtime versions. The script preserves unrelated PATH entries and adds the chosen Flutter directory to the user's PATH once. If another SDK takes priority in new terminals, use the absolute launch command printed by setup or select this SDK in your editor.
 
 The supported workflow layout uses separate `uses`/`with` lines, unquoted input keys, and literal exact versions on `stable` or `beta`. Expressions, version ranges, `flutter-version-file`, inline/folded action declarations, and quoted/merged input keys are rejected explicitly. A Dart SDK constraint alone cannot identify the exact Flutter version. `-WhatIf` and `-CheckOnly` use local configuration/metadata and never query the release manifest. Normal provisioning needs access to the official manifest even when reusing an SDK.
 
