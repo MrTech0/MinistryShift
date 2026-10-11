@@ -3,6 +3,7 @@
 ## Metadata
 - **Status**: Approved
 - **Approval**: User approved the written design on 2026-10-11.
+- **Approved amendment**: User requested a single provisioning script and project-derived tool versions on 2026-10-11; this replaces the original embedded version pins.
 - **Author**: Codex
 - **Created Date**: 2026-10-11
 - **Last Updated**: 2026-10-11
@@ -21,7 +22,7 @@ The script will live at `scripts/setup-windows-dev.ps1`. Documentation will repl
 
 | Item | Repository evidence | Provisioning decision |
 | :--- | :--- | :--- |
-| Flutter / Dart | Both workflows select Flutter 3.44.4; `pubspec.yaml` requires Dart ^3.12.2 | Install Flutter 3.44.4 stable, including Dart 3.12.2. Do not install Dart separately or upgrade Flutter implicitly. |
+| Flutter / Dart | Exact Flutter version/channel are declared in the workflows; `pubspec.yaml` and `pubspec.lock` declare SDK constraints | Read the exact project Flutter version/channel at runtime. Resolve the archive, integrity metadata, and bundled Dart from the official release manifest. Let locked dependency restoration validate SDK/package constraints. |
 | Native Windows compilation | `windows/CMakeLists.txt` builds a C++17 runner; plugins and SQLite native assets require compilation | Reuse a complete, stable Visual Studio 2019/2022/2026 installation recognized by Flutter. Otherwise install Visual Studio 2026 Build Tools with C++ tools, CMake, and Windows SDK. |
 | Git | Flutter SDK tooling depends on Git; source control uses HTTPS | Reuse Git for Windows or install `Git.Git` from the official WinGet source. Do not change Git identity, credentials, SSH keys, or remotes. |
 | Dependency resolution | `pubspec.lock` is committed | Use `flutter pub get --enforce-lockfile`; stop on lockfile incompatibility rather than updating packages. |
@@ -31,10 +32,10 @@ The script will live at `scripts/setup-windows-dev.ps1`. Documentation will repl
 | Java / JNI | CI installs Java 17; the locked JNI 1.0.0 plugin discovers JNI optionally in Flutter builds | Do not install Java for this Windows-only workflow. Preserve any existing JDK. A real debug build must catch problems caused by native plugins or existing toolchains. |
 | Packaging | `release.yml` uses WiX 3 `heat`, `candle`, and `light` and produces MSI | WiX is outside this development-only setup. The workflow name and SPEC-02 still refer to MSIX and need a separate packaging documentation update. |
 
-Flutter 3.44.4's toolchain implementation explicitly recognizes the Visual Studio 18 2026 CMake generator and the Build Tools `Microsoft.VisualStudio.Workload.VCTools` workload. Build Tools avoids installing an additional editor.
+At the initial project review, Flutter 3.44.4's toolchain recognized the Visual Studio 18 2026 CMake generator and the Build Tools `Microsoft.VisualStudio.Workload.VCTools` workload. Provisioning now discovers the project-selected release instead of embedding that version. Build Tools avoids installing an additional editor; each selected Flutter SDK's validation/build determines actual compatibility.
 
 ### 1.3 Approach Selection
-- **Recommended**: PowerShell orchestration, WinGet for Git and Build Tools, and an official Flutter archive with a pinned SHA-256. This works with the PowerShell 5.1 already included in Windows and keeps the SDK consistent with CI.
+- **Selected**: One self-contained PowerShell provisioning script, WinGet for Git and Build Tools, and the project-selected official Flutter archive verified against its published SHA-256. This works with Windows PowerShell 5.1 and keeps the SDK consistent with CI without embedding tool versions in the script.
 - **Alternative**: FVM for SDK management. Useful for teams maintaining several Flutter versions, but introduces a separate tool and project configuration that this repository does not currently use.
 - **Alternative**: WinGet Configuration / DSC. Suitable for managed workstation fleets, but adds configuration providers and a newer WinGet requirement to a small, single-project setup.
 
@@ -59,24 +60,24 @@ Flutter 3.44.4's toolchain implementation explicitly recognizes the Visual Studi
 - No arguments: provision prerequisites, restore project dependencies, generate code, check the Windows device, compile a debug build, and execute `flutter test`.
 - `-CheckOnly`: inspect OS, architecture, checkout, available tools, SDK identity, and native toolchain files; return a missing-requirements report without downloads, environment changes, generated files, or invoking Flutter commands that can initialize caches.
 - `-WhatIf`: display the actions that provisioning would perform, with no downloads, installations, PATH changes, Flutter commands, or project writes.
-- `-FlutterDirectory <absolute-path>`: choose the SDK directory. Default: `%USERPROFILE%\develop\flutter-3.44.4`. Require a writable path without whitespace, reject a filesystem root and an occupied directory that is not the requested SDK, and never overwrite another SDK.
+- `-FlutterDirectory <absolute-path>`: choose the SDK directory. Default: `%USERPROFILE%\develop\flutter-<project-version>`. Require a writable path without whitespace, reject a filesystem root and an occupied directory that is not the requested SDK, and never overwrite another SDK. A version upgrade naturally selects a new default directory.
 - `-SkipValidation`: skip the debug build and test suite. Clearly report that the setup is prepared but compilation and tests are unverified. Version, dependency restoration, generation, and Windows device checks remain mandatory during provisioning.
 
 **Preflight**
 1. Resolve the project from the script's location, independent of the caller's current directory. Require `pubspec.yaml`, `pubspec.lock`, `windows/CMakeLists.txt`, and both font assets.
 2. Require Windows 11 (build 22000 or later), an x64 OS, and a 64-bit PowerShell process. Reject Windows on ARM and unsupported hosts with actionable messages.
-3. Check that both workflows still select the specified Flutter version and that the pubspec's Dart constraint is the reviewed constraint. Stop on drift so future toolchain changes require an intentional update.
+3. Read literal exact version/channel declarations from `subosito/flutter-action` steps in `.github/workflows/*.yml` and `*.yaml`. Require a single consistent selection on stable or beta. Reject missing, conflicting, or unsupported dynamic configuration instead of guessing. Read `environment.sdk` from pubspec; do not embed or duplicate its constraint. Ordinary numeric dependency/SDK updates must not require editing provisioning code.
 4. Require WinGet only when a missing native prerequisite needs installation. If missing, explain how to install Microsoft's App Installer; do not execute a remote bootstrap script.
 5. Detect existing Visual Studio instances with Microsoft's installed `vswhere`, including Build Tools, required workloads, MSVC x64/x86, CMake, Windows SDK, and completion/reboot status. A pending installer reboot blocks readiness.
 
 **Provisioning**
 - Invoke native commands using executable paths and argument arrays. Check every exit code; never use `Invoke-Expression` or evaluate downloaded text.
 - Use exact WinGet package IDs and `--source winget`; retain WinGet hash validation. Explain package agreement acceptance in the README. Do not upgrade existing compatible tools automatically.
-- For missing compiler tools, install reviewed stable `Microsoft.VisualStudio.BuildTools` 18.10.2 (Visual Studio 2026) with `Microsoft.VisualStudio.Workload.VCTools` and recommended components, with no automatic restart. Pin this initial installer selection rather than silently selecting a future unsupported Visual Studio major version; subsequent security updates remain the normal responsibility of Visual Studio Installer. An existing incomplete Build Tools instance may receive these components through the signed Microsoft installer; preserve existing Visual Studio IDE workloads.
+- For missing compiler tools, install the current stable `Microsoft.VisualStudio.BuildTools` WinGet package with `Microsoft.VisualStudio.Workload.VCTools` and recommended components, with no automatic restart or embedded version. An existing incomplete Build Tools instance may receive these components through the signed Microsoft installer; preserve existing Visual Studio IDE workloads. Flutter's readiness/build checks validate actual compatibility; existing tools remain under normal Visual Studio Installer security maintenance.
 - Keep the main script under the developer's account. Only Microsoft installer operations may request UAC elevation. Never relaunch the entire setup under another administrator account.
-- Download Flutter from `https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.4-stable.zip` over HTTPS. Verify SHA-256 `8f2d6224fc6872d2f7f180de86cde989fcea3776efe0edf48a9aac2cd9be2b1b` before extracting or running it.
+- During provisioning, obtain the official Windows release manifest over HTTPS and select exactly the project version/channel and x64 architecture. Require valid SHA-256/revision metadata and an archive within the official Flutter download location. Verify the published SHA-256 before extracting or running it. Do not select another release when the requested version is absent. Read-only modes perform no network requests.
 - Stage extraction in a unique temporary directory; publish it to the requested empty SDK directory only after integrity and layout checks. Remove only temporary content created by this invocation, after verifying the resolved cleanup target is inside that temporary directory. Preserve partial installations for diagnosis if safe cleanup cannot be established.
-- Reuse an already installed Flutter 3.44.4 stable SDK when its version is verified. Use its absolute executable paths for provisioning, independent of another Flutter or Dart in PATH. Detect and report conflicting PATH entries.
+- Reuse an already installed project SDK when its cached version/channel and current Git revision agree. Provisioning additionally verifies the official release revision and runtime Flutter/Dart versions. Use absolute executable paths, independent of another Flutter or Dart in PATH. Detect and report conflicting PATH entries. Do not overwrite incompatible or unverifiable SDKs.
 - Add the selected Flutter `bin` to the user's PATH only once. Preserve all unrelated user and machine PATH entries; update the current process for child commands. Do not use `setx`.
 - Enable the Windows desktop target if needed, without changing other Flutter platforms or telemetry preferences. Prepare Windows SDK caches.
 - Restore dependencies with the lockfile enforced, run generation, and verify Flutter reports a Windows device. Preserve and restore the caller's working directory using `try/finally`.
@@ -112,6 +113,7 @@ No migrations. The script must not open the application, modify a developer's da
 
 ### 4.2 Test Scenarios (Unit & Integration)
 - Already provisioned environment: no installer call, no SDK download, no duplicate PATH entry.
+- Project version update: changed Flutter/Dart declarations are read without code edits; conflicting workflows stop early. Validate Windows CRLF, cached metadata/revision agreement, manifest architecture/hash selection, and a copied single script with no helper.
 - Missing native tools: only the expected exact WinGet packages and components are requested.
 - `-CheckOnly` and `-WhatIf`: zero download, installer, environment persistence, Flutter, or generation calls.
 - Conflicting SDK, occupied directory, path containing spaces, unsupported OS/architecture, incomplete toolchain, and pending reboot: actionable failure without overwriting existing tools.
@@ -126,7 +128,7 @@ No migrations. The script must not open the application, modify a developer's da
 
 ### 5.1 Security
 - No secrets, elevated Flutter execution, execution-policy changes, antivirus exclusions, certificate bypasses, or download-and-execute pipelines.
-- Use the pinned official Flutter archive and trusted WinGet source. Verify the signature of any directly invoked Visual Studio installer before requesting elevation.
+- Use the project-selected official Flutter archive with its manifest integrity metadata and trusted WinGet source. Verify the signature of any directly invoked Visual Studio installer before requesting elevation.
 - Check final absolute targets before recursive cleanup or SDK movement; never remove or replace a pre-existing SDK.
 - The existing SQLCipher configuration and authentication tests remain unchanged.
 

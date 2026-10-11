@@ -6,7 +6,9 @@ Flutter desktop application for ministry scheduling. The current development tar
 
 Use an existing Git checkout, a 64-bit PowerShell, and your preferred editor. Run setup as your normal developer account, without opening PowerShell as administrator. Missing Git and C++ Build Tools are installed through Microsoft's WinGet source; their installers may request UAC elevation. Provisioning accepts the required WinGet source and package agreements.
 
-The script uses Flutter **3.44.4 stable**, including **Dart 3.12.2**, to match CI. It reuses compatible Git and Visual Studio installations or installs the reviewed Visual Studio 2026 Build Tools **18.10.2** with C++, CMake, and Windows SDK. Keep compiler security updates current through Visual Studio Installer. Flutter updates require an intentional project/CI toolchain change.
+The script reads the exact `flutter-version` and `channel` declared by `subosito/flutter-action` in the project's workflows. Update those declarations when updating Flutter; the provisioning script needs no version edits. All declarations must agree. The official Windows release manifest supplies the selected archive, SHA-256, Git revision, and bundled Dart version. Dart dependencies and SDK constraints are verified by locked dependency restoration.
+
+Compatible Git and Visual Studio installations are reused. Missing Build Tools are installed from the current stable `Microsoft.VisualStudio.BuildTools` WinGet package with C++, CMake, and Windows SDK, without a version embedded in the script. The selected Flutter SDK and the final debug build verify actual compiler compatibility. Keep existing compiler security updates current through Visual Studio Installer.
 
 From the repository root, preview the actions:
 
@@ -26,7 +28,7 @@ Windows PowerShell 5.1 and PowerShell 7 are supported. If Windows PowerShell's d
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\setup-windows-dev.ps1
 ```
 
-The script resolves the checkout from its own location, so it also works when invoked by absolute path from another directory. Keep the entry point and `windows-dev-tools.ps1` together under `scripts/`.
+`scripts/setup-windows-dev.ps1` is the only provisioning script; it contains its own functions and requires no helper script or downloaded PowerShell module. It resolves the checkout from its own location, so it also works when invoked by absolute path from another directory.
 
 ### Options
 
@@ -34,10 +36,12 @@ The script resolves the checkout from its own location, so it also works when in
 | :--- | :--- |
 | `-WhatIf` | Preview actions without downloads, installers, PATH changes, or Flutter execution. |
 | `-CheckOnly` | Inspect prerequisites without initializing Flutter caches. Exit nonzero if requirements are missing. Does not prove compilation or tests pass. |
-| `-FlutterDirectory C:\dev\flutter-3.44.4` | Select an absolute, writable SDK path without whitespace, semicolons, or junctions. Existing incompatible directories are protected. |
+| `-FlutterDirectory C:\dev\flutter-project` | Select an absolute, writable SDK path without whitespace, semicolons, or junctions. Existing incompatible directories are protected. |
 | `-SkipValidation` | Restore dependencies and generate code, but skip the debug build and application tests; report them as unverified. |
 
-The default SDK directory is `%USERPROFILE%\develop\flutter-3.44.4`. Without an explicit directory, setup can reuse a verified Flutter 3.44.4 already on PATH. Downloads use the official Flutter archive and its pinned SHA-256. The script preserves unrelated PATH entries and adds Flutter to the user's PATH once. If another SDK takes priority in new terminals, use the absolute launch command printed by setup or select this SDK in your editor.
+The default SDK directory is `%USERPROFILE%\develop\flutter-<project-version>`, so a project upgrade selects a separate directory and preserves the old SDK. Without an explicit directory, setup can reuse an SDK on PATH when its cached version and Git revision match the project. Provisioning also checks the official release revision and runtime versions. The script preserves unrelated PATH entries and adds Flutter to the user's PATH once. If another SDK takes priority in new terminals, use the absolute launch command printed by setup or select this SDK in your editor.
+
+The supported workflow layout uses separate `uses`/`with` lines, unquoted input keys, and literal exact versions on `stable` or `beta`. Expressions, version ranges, `flutter-version-file`, inline/folded action declarations, and quoted/merged input keys are rejected explicitly. A Dart SDK constraint alone cannot identify the exact Flutter version. `-WhatIf` and `-CheckOnly` use local configuration/metadata and never query the release manifest. Normal provisioning needs access to the official manifest even when reusing an SDK.
 
 Setup runs locked dependency restoration, Drift code generation, Windows device detection, `flutter build windows --debug`, and `flutter test`. Uncommitted generated `.g.dart` files block generation; commit or back up those edits first. Generated changes are left available for review with `git diff`. No Git cleanup or automatic stash occurs.
 
@@ -67,8 +71,8 @@ This launches the native Windows application and Flutter's debugging connection.
 The dependency-free harness uses temporary fixtures and mocked installers/downloads. It does not provision the host:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\tests\windows-dev-tools.tests.ps1
-pwsh.exe -NoProfile -File .\scripts\tests\windows-dev-tools.tests.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\tests\setup-windows-dev.tests.ps1
+pwsh.exe -NoProfile -File .\scripts\tests\setup-windows-dev.tests.ps1
 ```
 
 See [Windows development validation](docs/windows-development-validation.md) for clean-machine acceptance and the recorded verification limits. The approved behavior is documented in [SPEC-08](specs/08_windows_development_setup.md).

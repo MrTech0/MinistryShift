@@ -1,5 +1,7 @@
 # Windows Development Setup Implementation Plan
 
+This is the initial delivery record, completed in `db11e99`. The user's subsequent single-script/project-derived-version amendment supersedes its original embedded toolchain choices; current requirements are in SPEC-08 and the amendment record below.
+
 > Implement inline using the executing-plans and test-driven-development skills; request one independent review at the end.
 
 **Goal:** Provision an existing MinistryShift checkout for Windows desktop development and hot reload.
@@ -57,3 +59,12 @@
 - Git: the staged diff passed `git diff --cached --check`; all seven changed files belong to this task.
 - Acceptance limitation: no actual prerequisite installation, full SDK download, application build/tests, or interactive hot reload was run. These are documented VM acceptance checks, not claims supported by the mocked harness.
 - Delivery: preserve the dedicated local branch; publishing or merging is outside this approved implementation task.
+
+## User-requested amendment: single script and project-derived versions
+- Authorization: the user explicitly requested one provisioning script and automatic discovery of the project's current versions. Implement this bounded correction within the already approved Windows desktop scope; no additional design approval is needed.
+- Implementation: `setup-windows-dev.ps1` now contains the entry point and all functions. The helper was removed. The renamed `scripts/tests/setup-windows-dev.tests.ps1` harness loads functions without provisioning and is not a runtime dependency.
+- Version discovery: read consistent literal Flutter version/channel inputs from project workflows and the Dart constraint from pubspec. Select the exact official Windows x64 release from Flutter's HTTPS manifest, including SHA-256/revision/bundled Dart. Build Tools installation uses WinGet's current stable package rather than an embedded version. Preserve existing tools and rely on locked restoration/debug compilation for compatibility validation.
+- Test evidence: initial new behavior produced eight failing tests against the old implementation. Additional CRLF and review regressions also failed before correction. The final harness passed 42/42 in Windows PowerShell 5.1 and PowerShell 7.6.5.
+- Read-only evidence: both PowerShell parsers and real WhatIf/CheckOnly checks passed from outside the repository, preserving user PATH and the SDK destination. Real official manifest lookups in both PowerShell versions resolved the project's current selection without installing/downloading the SDK.
+- Review/delivery: one independent reviewer approved this amendment after the parser regressions were addressed. The staged diff passed whitespace/error checks. Preserve the reviewed changes in a local commit on the existing task branch.
+- Acceptance limit: clean-machine provisioning, installers/UAC, actual application build/tests, and hot reload remain unperformed. The documented VM procedure includes a project-version upgrade and old-SDK preservation check.
